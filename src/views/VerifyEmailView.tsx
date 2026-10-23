@@ -8,7 +8,7 @@ export const VerifyEmailView: React.FC<{ onGoLogin?: () => void }> = ({ onGoLogi
   const started = useRef(false)
 
   useEffect(() => {
-    if (started.current) return
+    if (started.current) return // React StrictMode предотвращает второй вызов
     started.current = true
 
     const params = new URLSearchParams(window.location.search)
@@ -19,7 +19,8 @@ export const VerifyEmailView: React.FC<{ onGoLogin?: () => void }> = ({ onGoLogi
       return
     }
 
-    api.get(`/api/verify-email?token=${token}`)
+    // Запрос в точности по стандарту бэкенда из раздела 6.2
+    api.post('/api/auth/verify-email', { token })
       .then(() => setState('ok'))
       .catch(() => setState('invalid'))
   }, [])

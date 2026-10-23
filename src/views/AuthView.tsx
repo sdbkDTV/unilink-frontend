@@ -9,25 +9,78 @@ interface AuthViewProps {
 
 export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  
+  // Form fields
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [department, setDepartment] = useState('')
   const [university, setUniversity] = useState('')
-  
-  const [authErrors, setAuthErrors] = useState<{ [key: string]: string }>({})
+
+  // State management
+  const [authErrors, setAuthErrors] = useState<Record<string, string>>({})
   const [generalError, setGeneralError] = useState<string>('')
   const [successNotice, setSuccessNotice] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleLogin = async (e: FormEvent) => {
-    e.preventDefault()
+  const resetErrorsAndNotices = () => {
+    setAuthErrors({})
     setGeneralError('')
     setSuccessNotice('')
-    const errs: { [key: string]: string } = {}
+  }
 
-    if (!email.trim()) errs.email = 'Lütfen e-posta adresinizi giriniz.'
-    if (!password.trim()) errs.password = 'Lütfen şifrenizi giriniz.'
+  const switchMode = (mode: 'login' | 'register') => {
+    setAuthMode(mode)
+    resetErrorsAndNotices()
+  }
+
+  // Handle errors coming from Spring Boot validation
+  const handleApiError = (err: unknown) => {
+    const parsed = parseError(err)
+
+    if (parsed.status === 0) {
+      // Offline / Demo fallback
+      console.warn('Backend çevrimdışı, demo modunda devam ediliyor.')
+      onSuccess({
+        name: name.trim() || 'Öğrenci',
+        email: email.trim(),
+        department: department.trim() || 'Bilgisayar Mühendisliği',
+        university: university.trim() || 'İstanbul Üniversitesi',
+      })
+      return
+    }
+
+    setGeneralError(parsed.message)
+
+    if (parsed.fieldErrors) {
+      const mappedErrors: Record<string, string> = { ...parsed.fieldErrors }
+      
+      // Backend returns 'fullName', map it to 'name' for the UI
+      if (mappedErrors.fullName) {
+        mappedErrors.name = mappedErrors.fullName
+        delete mappedErrors.fullName
+      }
+
+      setAuthErrors(mappedErrors)
+    }
+  }
+
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault()
+    resetErrorsAndNotices()
+
+    const trimmedEmail = email.trim()
+    const errs: Record<string, string> = {}
+
+    if (!trimmedEmail) {
+      errs.email = 'Lütfen e-posta adresinizi giriniz.'
+    } else if (!trimmedEmail.includes('@')) {
+      errs.email = 'Geçerli bir e-posta adresi giriniz.'
+    }
+
+    if (!password.trim()) {
+      errs.password = 'Lütfen şifrenizi giriniz.'
+    }
 
     if (Object.keys(errs).length > 0) {
       setAuthErrors(errs)
@@ -36,11 +89,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
 
     setIsLoading(true)
     try {
-      // 1. Backend'e giriş isteği atıyoruz
-      await authApi.login(email.trim(), password)
-      
-      // 2. Giriş başarılıysa kendi profil bilgilerimizi çekiyoruz
+      await authApi.login(trimmedEmail, password)
       const profile = await getMyProfile()
+
       onSuccess({
         id: profile.userId,
         name: profile.fullName,
@@ -51,23 +102,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
         githubUrl: profile.githubUrl,
         linkedinUrl: profile.linkedinUrl,
       })
-    } catch (err: unknown) {
-      const parsed = parseError(err)
-      if (parsed.status === 0) {
-        // Backend kapalıysa demo modunda devam et
-        console.warn('Backend çevrimdışı, demo modunda giriş yapılıyor.')
-        onSuccess({
-          name: name || 'Öğrenci',
-          email,
-          department: department || 'Bilgisayar Mühendisliği',
-          university: university || 'İstanbul Üniversitesi'
-        })
-      } else {
-        setGeneralError(parsed.message)
-        if (parsed.fieldErrors) {
-          setAuthErrors(parsed.fieldErrors)
-        }
-      }
+    } catch (err) {
+      handleApiError(err)
     } finally {
       setIsLoading(false)
     }
@@ -75,23 +111,33 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
 
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault()
-    setGeneralError('')
-    setSuccessNotice('')
-    const errs: { [key: string]: string } = {}
+    resetErrorsAndNotices()
 
-    if (!name.trim()) errs.name = 'Ad Soyad zorunludur.'
-    if (!email.trim()) {
-      errs.email = 'E-posta zorunludur.'
-    } else if (!email.trim().endsWith('.edu.tr')) {
+    const trimmedEmail = email.trim().toLowerCase()
+    const trimmedName = name.trim()
+    const trimmedUniversity = university.trim()
+    const trimmedDepartment = department.trim()
+
+    const errs: Record<string, string> = {}
+
+    if (!trimmedName) errs.name = 'Ad Soyad zorunludur.'
+
+    if (!trimmedEmail) {
+      errs.email = 'E-posta adresi zorunludur.'
+    } else if (!trimmedEmail.includes('@')) {
+      errs.email = 'Geçerli bir e-posta adresi giriniz (örneğin: isim@fsm.edu.tr).'
+    } else if (!trimmedEmail.endsWith('.edu.tr')) {
       errs.email = 'Kayıt için .edu.tr uzantılı bir üniversite e-postası gereklidir.'
     }
+
     if (!password.trim()) {
       errs.password = 'Şifre zorunludur.'
     } else if (password.length < 8) {
       errs.password = 'Şifre en az 8 karakter olmalıdır.'
     }
-    if (!university.trim()) errs.university = 'Üniversite zorunludur.'
-    if (!department.trim()) errs.department = 'Bölüm zorunludur.'
+
+    if (!trimmedUniversity) errs.university = 'Üniversite zorunludur.'
+    if (!trimmedDepartment) errs.department = 'Bölüm zorunludur.'
 
     if (Object.keys(errs).length > 0) {
       setAuthErrors(errs)
@@ -101,33 +147,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
     setIsLoading(true)
     try {
       await authApi.register({
-        email: email.trim().toLowerCase(),
+        email: trimmedEmail,
         password,
-        fullName: name.trim(),
-        university: university.trim(),
-        department: department.trim(),
+        fullName: trimmedName,
+        university: trimmedUniversity,
+        department: trimmedDepartment,
       })
-      
+
       setSuccessNotice(
-        'Kayıt başarılı! Doğrulama e-postası gönderildi. Test için Mailpit arayüzünü (http://localhost:8025) kontrol edebilirsiniz.'
+        'Kayıt başarılı! Doğrulama e-postası gönderildi. Mailpit arayüzünü (http://localhost:8025) kontrol edebilirsiniz.'
       )
       setAuthMode('login')
-    } catch (err: unknown) {
-      const parsed = parseError(err)
-      if (parsed.status === 0) {
-        // Backend çevrimdışıysa demo olarak devam et
-        onSuccess({
-          name: name.trim(),
-          email: email.trim(),
-          department: department.trim(),
-          university: university.trim(),
-        })
-      } else {
-        setGeneralError(parsed.message)
-        if (parsed.fieldErrors) {
-          setAuthErrors(parsed.fieldErrors)
-        }
-      }
+    } catch (err) {
+      handleApiError(err)
     } finally {
       setIsLoading(false)
     }
@@ -144,50 +176,48 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
         <div className="auth-toggle">
           <button
             className={authMode === 'login' ? 'active' : ''}
-            onClick={() => {
-              setAuthMode('login')
-              setAuthErrors({})
-              setGeneralError('')
-            }}
+            onClick={() => switchMode('login')}
+            type="button"
           >
             Giriş Yap
           </button>
           <button
             className={authMode === 'register' ? 'active' : ''}
-            onClick={() => {
-              setAuthMode('register')
-              setAuthErrors({})
-              setGeneralError('')
-            }}
+            onClick={() => switchMode('register')}
+            type="button"
           >
             Kayıt Ol
           </button>
         </div>
 
         {generalError && (
-          <div style={{
-            padding: '10px 14px',
-            backgroundColor: '#fef2f2',
-            color: '#dc2626',
-            borderRadius: '8px',
-            fontSize: '13px',
-            marginBottom: '14px',
-            border: '1px solid #fecaca'
-          }}>
+          <div
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#fef2f2',
+              color: '#dc2626',
+              borderRadius: '8px',
+              fontSize: '13px',
+              marginBottom: '14px',
+              border: '1px solid #fecaca',
+            }}
+          >
             ⚠️ {generalError}
           </div>
         )}
 
         {successNotice && (
-          <div style={{
-            padding: '10px 14px',
-            backgroundColor: '#f0fdf4',
-            color: '#166534',
-            borderRadius: '8px',
-            fontSize: '13px',
-            marginBottom: '14px',
-            border: '1px solid #bbf7d0'
-          }}>
+          <div
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#f0fdf4',
+              color: '#166534',
+              borderRadius: '8px',
+              fontSize: '13px',
+              marginBottom: '14px',
+              border: '1px solid #bbf7d0',
+            }}
+          >
             ✉️ {successNotice}
           </div>
         )}
