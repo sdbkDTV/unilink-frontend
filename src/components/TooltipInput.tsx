@@ -3,6 +3,8 @@ import React from 'react'
 interface TooltipInputProps {
   label: string
   id?: string
+  name?: string
+  autoComplete?: string
   type?: 'text' | 'email' | 'password'
   placeholder?: string
   value: string
@@ -16,6 +18,8 @@ interface TooltipInputProps {
 export const TooltipInput: React.FC<TooltipInputProps> = ({
   label,
   id,
+  name,
+  autoComplete,
   type = 'text',
   placeholder,
   value,
@@ -25,7 +29,7 @@ export const TooltipInput: React.FC<TooltipInputProps> = ({
   isTextarea = false,
   rows = 4
 }) => {
-  const inputId = id || label.toLowerCase().replace(/\s+/g, '-')
+  const inputId = id || (name || label.toLowerCase().replace(/\s+/g, '-'))
 
   return (
     <div className="form-group">
@@ -36,6 +40,7 @@ export const TooltipInput: React.FC<TooltipInputProps> = ({
         {isTextarea ? (
           <textarea
             id={inputId}
+            name={name}
             rows={rows}
             placeholder={placeholder}
             value={value}
@@ -45,7 +50,9 @@ export const TooltipInput: React.FC<TooltipInputProps> = ({
         ) : (
           <input
             id={inputId}
+            name={name}
             type={type}
+            autoComplete={autoComplete}
             placeholder={placeholder}
             value={value}
             onChange={(e) => onChange(e.target.value)}

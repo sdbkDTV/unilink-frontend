@@ -7,11 +7,13 @@ import {
   getMyProfile,
   getFeed,
   createPosting,
+  cancelPosting,
   applyToPosting,
   getMyApplications,
   withdrawApplication,
   savePosting,
   unsavePosting,
+  getSavedPostings,
   getPendingCount,
   authApi,
   parseError
@@ -19,6 +21,7 @@ import {
 
 import { Navbar } from './components/Navbar'
 import { ProjectDetailModal } from './components/ProjectDetailModal'
+import { IncomingApplicationsModal } from './components/IncomingApplicationsModal'
 
 import { AuthView } from './views/AuthView'
 import { VerifyEmailView } from './views/VerifyEmailView'
@@ -32,14 +35,6 @@ import { PlaceholderView } from './views/PlaceholderView'
 import './styles/global.css'
 
 export default function App() {
-  // URL yolunu kontrol et: /verify-email?token=... ise doğrulama sayfasını göster
-  const [currentPath, setCurrentPath] = useState(window.location.pathname)
-
-  useEffect(() => {
-    const handlePopState = () => setCurrentPath(window.location.pathname)
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return Boolean(tokens.getAccess())
@@ -78,6 +73,9 @@ export default function App() {
   // İncelenen proje detayı (Modal)
   const [inspectingProject, setInspectingProject] = useState<ProjectCardType | null>(null)
 
+  // Gelen başvuruları incelenen proje (Modal)
+  const [incomingModalProject, setIncomingModalProject] = useState<ProjectCardType | null>(null)
+
   // Backend'den ilan ve başvuru verilerini çek
   const loadBackendData = useCallback(() => {
     // İlan akışını çek
@@ -92,9 +90,17 @@ export default function App() {
             company: p.organizationName || p.owner.university,
             description: p.shortDescription,
             authorName: p.owner.fullName,
+            ownerId: p.owner.id,
             type: p.type,
             open: p.open,
             deadline: p.deadline,
+            roles: p.roles?.map(r => ({
+              id: r.id,
+              role: r.role,
+              requiredCount: r.requiredCount,
+              remainingCount: r.remainingCount,
+              acceptedCount: r.acceptedCount
+            }))
           }))
           setProjects(mapped)
         }
@@ -129,6 +135,16 @@ export default function App() {
                 : 'Beklemede',
           }))
           setApplications(mappedApps)
+        }
+      })
+      .catch(() => {})
+
+    // Kaydedilen ilanları kullanıcıya özel çek
+    getSavedPostings(0, 50)
+      .then((page) => {
+        if (page && page.content) {
+          const ids = page.content.map((p) => p.id)
+          setSavedProjectIds(ids)
         }
       })
       .catch(() => {})
@@ -182,11 +198,13 @@ export default function App() {
   const handleCreateProject = async (newProject: ProjectCardType) => {
     try {
       const created = await createPosting({
-        type: 'PROJECT',
+        type: (newProject.type as any) || 'PROJECT',
         title: newProject.title,
         description: newProject.description,
-        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        roles: [{ role: 'Geliştirici', requiredCount: 2 }],
+        deadline: newProject.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        roles: newProject.roles && newProject.roles.length > 0
+          ? newProject.roles.map((r) => ({ role: r.role, requiredCount: r.requiredCount }))
+          : [{ role: 'Geliştirici', requiredCount: 1 }],
         technologies: newProject.technology,
         organizationName: newProject.company,
       })
@@ -199,6 +217,14 @@ export default function App() {
         company: created.organizationName || created.owner.university,
         description: created.description,
         authorName: created.owner.fullName,
+        ownerId: created.owner.id,
+        roles: created.roles?.map(r => ({
+          id: r.id,
+          role: r.role,
+          requiredCount: r.requiredCount,
+          remainingCount: r.remainingCount,
+          acceptedCount: r.acceptedCount
+        }))
       }
       setProjects([mapped, ...projects])
     } catch {
@@ -237,18 +263,20 @@ export default function App() {
   }
 
   // Başvuru yapma
-  const handleApply = async (project: ProjectCardType) => {
+  const handleApply = async (project: ProjectCardType, roleIds: string[] = [], message?: string) => {
     if (applications.some((a) => a.projectId === project.id)) return
 
     try {
       if (typeof project.id === 'string') {
         await applyToPosting(project.id, {
-          message: 'Projeye katılmak istiyorum.',
-          roleIds: [],
+          message: message || 'Projeye katılmak istiyorum.',
+          roleIds: roleIds,
         })
       }
-    } catch {
-      // Backend çevrimdışıysa yerel simülasyon devam eder
+    } catch (err: unknown) {
+      const parsed = parseError(err)
+      console.warn('Backend başvurusu başarısız:', parsed.message)
+      throw new Error(parsed.message)
     }
 
     const newApp: Application = {
@@ -270,6 +298,19 @@ export default function App() {
     setApplications(applications.filter((a) => a.id !== id))
   }
 
+  // İlan iptal etme (silme)
+  const handleDeleteProject = async (id: string | number) => {
+    try {
+      if (typeof id === 'string') {
+        await cancelPosting(id)
+      }
+    } catch (err: unknown) {
+      console.warn('Backend ilan iptali başarısız:', err)
+    }
+    setProjects(projects.filter((p) => p.id !== id))
+    setSavedProjectIds(savedProjectIds.filter((favId) => favId !== id))
+  }
+
   // Çıkış yapma
   const handleLogout = async () => {
     try {
@@ -278,17 +319,21 @@ export default function App() {
       // Çıkış hatası olsa bile token'ları temizle
     }
     tokens.clear()
+    // Önceki kullanıcının kaydedilenlerini ve başvurularını temizle
+    setSavedProjectIds([])
+    setApplications([])
+    localStorage.removeItem('unilink_saved_ids')
+    localStorage.removeItem('unilink_applications')
     setIsAuthenticated(false)
     setActiveTab('Anasayfa')
   }
-
-  // --- E-posta doğrulama sayfası: /verify-email?token=... ---
-  if (currentPath === '/verify-email') {
+  // --- E-posta doğrulama sayfası ---
+  if (window.location.pathname === '/verify-email') {
     return (
       <VerifyEmailView
         onGoLogin={() => {
-          window.history.pushState({}, '', '/')
-          setCurrentPath('/')
+          window.history.replaceState({}, '', '/')
+          window.location.href = '/'
         }}
       />
     )
@@ -338,7 +383,12 @@ export default function App() {
           />
         )}
         {activeTab === 'Profil' && (
-          <ProfileView user={currentUser} userProjects={userProjects} onInspect={setInspectingProject} />
+          <ProfileView
+            user={currentUser}
+            userProjects={userProjects}
+            onInspect={setInspectingProject}
+            onUserUpdated={setCurrentUser}
+          />
         )}
         {activeTab === 'Kaydedilenler' && (
           <SavedProjectsView savedProjects={savedProjects} onToggleSave={toggleSaveProject} onInspect={setInspectingProject} />
@@ -356,11 +406,29 @@ export default function App() {
       {inspectingProject && (
         <ProjectDetailModal
           project={inspectingProject}
+          currentUserId={currentUser.id}
+          currentUserName={currentUser.name}
           onClose={() => setInspectingProject(null)}
           isSaved={isIdSaved(inspectingProject.id)}
           onToggleSave={toggleSaveProject}
           isApplied={applications.some((a) => a.projectId === inspectingProject.id)}
           onApply={handleApply}
+          onDeleteProject={handleDeleteProject}
+          onOpenIncomingApplications={(proj) => {
+            setInspectingProject(null)
+            setIncomingModalProject(proj)
+          }}
+        />
+      )}
+
+      {incomingModalProject && (
+        <IncomingApplicationsModal
+          project={incomingModalProject}
+          onClose={() => setIncomingModalProject(null)}
+          onActionComplete={() => {
+            // Karar verildiğinde rozet ve başvuruları yenile
+            getPendingCount().then((count) => setPendingCount(count)).catch(() => {})
+          }}
         />
       )}
     </div>

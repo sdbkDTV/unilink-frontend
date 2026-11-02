@@ -1,3 +1,11 @@
+export interface ProjectRole {
+  id: string
+  role: string
+  requiredCount: number
+  acceptedCount?: number
+  remainingCount: number
+}
+
 export interface ProjectCard {
   id: number | string
   title: string
@@ -6,9 +14,11 @@ export interface ProjectCard {
   company: string
   description: string
   authorName: string
+  ownerId?: string
   type?: string
   open?: boolean
   deadline?: string
+  roles?: ProjectRole[]
 }
 
 export interface User {
