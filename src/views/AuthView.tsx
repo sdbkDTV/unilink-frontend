@@ -10,13 +10,17 @@ interface AuthViewProps {
 export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
 
-  // Form fields (kayıt sonrasında yazılan bilgilerin silinmemesi için localStorage desteği)
-  const [email, setEmail] = useState(() => localStorage.getItem('unilink_remember_email') || '')
-  const [password, setPassword] = useState(() => localStorage.getItem('unilink_remember_password') || '')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [name, setName] = useState('')
-  const [department, setDepartment] = useState('')
-  const [university, setUniversity] = useState('')
+  // --- Giriş Formu Alanları ---
+  const [loginEmail, setLoginEmail] = useState(() => localStorage.getItem('unilink_remember_email') || '')
+  const [loginPassword, setLoginPassword] = useState(() => localStorage.getItem('unilink_remember_password') || '')
+
+  // --- Kayıt Formu Alanları (Her zaman sıfırdan boş başlar) ---
+  const [registerName, setRegisterName] = useState('')
+  const [registerEmail, setRegisterEmail] = useState('')
+  const [registerUniversity, setRegisterUniversity] = useState('')
+  const [registerDepartment, setRegisterDepartment] = useState('')
+  const [registerPassword, setRegisterPassword] = useState('')
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('')
 
   // State management
   const [authErrors, setAuthErrors] = useState<Record<string, string>>({})
@@ -33,8 +37,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
       const savedEmail = localStorage.getItem('unilink_remember_email')
       const savedPass = localStorage.getItem('unilink_remember_password')
 
-      if (savedEmail) setEmail(savedEmail)
-      if (savedPass) setPassword(savedPass)
+      if (savedEmail) setLoginEmail(savedEmail)
+      if (savedPass) setLoginPassword(savedPass)
 
       if (verifySuccess) {
         setSuccessNotice('🎉 Hesabınız başarıyla doğrulandı! Bilgileriniz hazır, doğrudan giriş yapabilirsiniz.')
@@ -64,6 +68,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
   const switchMode = (mode: 'login' | 'register') => {
     setAuthMode(mode)
     resetErrorsAndNotices()
+    // Kayıt sekmesine geçildiğinde kayıt formunu tamamen temizle
+    if (mode === 'register') {
+      setRegisterName('')
+      setRegisterEmail('')
+      setRegisterUniversity('')
+      setRegisterDepartment('')
+      setRegisterPassword('')
+      setRegisterConfirmPassword('')
+    }
   }
 
   // Handle errors coming from Spring Boot validation
@@ -94,7 +107,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
     e.preventDefault()
     resetErrorsAndNotices()
 
-    const trimmedEmail = email.trim()
+    const trimmedEmail = loginEmail.trim()
     const errs: Record<string, string> = {}
 
     if (!trimmedEmail) {
@@ -103,7 +116,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
       errs.email = 'Geçerli bir e-posta adresi giriniz.'
     }
 
-    if (!password.trim()) {
+    if (!loginPassword.trim()) {
       errs.password = 'Lütfen şifrenizi giriniz.'
     }
 
@@ -114,7 +127,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
 
     setIsLoading(true)
     try {
-      await authApi.login(trimmedEmail, password)
+      await authApi.login(trimmedEmail, loginPassword)
       const profile = await getMyProfile()
 
       // Giriş başarılı olunca geçici hafızayı temizle
@@ -142,10 +155,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
     e.preventDefault()
     resetErrorsAndNotices()
 
-    const trimmedEmail = email.trim().toLowerCase()
-    const trimmedName = name.trim()
-    const trimmedUniversity = university.trim()
-    const trimmedDepartment = department.trim()
+    const trimmedEmail = registerEmail.trim().toLowerCase()
+    const trimmedName = registerName.trim()
+    const trimmedUniversity = registerUniversity.trim()
+    const trimmedDepartment = registerDepartment.trim()
 
     const errs: Record<string, string> = {}
 
@@ -159,15 +172,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
       errs.email = 'Kayıt için .edu.tr uzantılı bir üniversite e-postası gereklidir.'
     }
 
-    if (!password.trim()) {
+    if (!registerPassword.trim()) {
       errs.password = 'Şifre zorunludur.'
-    } else if (password.length < 8) {
+    } else if (registerPassword.length < 8) {
       errs.password = 'Şifre en az 8 karakter olmalıdır.'
     }
 
-    if (!confirmPassword.trim()) {
+    if (!registerConfirmPassword.trim()) {
       errs.confirmPassword = 'Şifre tekrarı zorunludur.'
-    } else if (password !== confirmPassword) {
+    } else if (registerPassword !== registerConfirmPassword) {
       errs.confirmPassword = 'Şifreler birbiriyle eşleşmiyor.'
     }
 
@@ -183,7 +196,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
     try {
       await authApi.register({
         email: trimmedEmail,
-        password,
+        password: registerPassword,
         fullName: trimmedName,
         university: trimmedUniversity,
         department: trimmedDepartment,
@@ -191,10 +204,20 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
 
       // Kayıt edilen bilgileri giriş ekranında hazır olması için sakla
       localStorage.setItem('unilink_remember_email', trimmedEmail)
-      localStorage.setItem('unilink_remember_password', password)
+      localStorage.setItem('unilink_remember_password', registerPassword)
+      setLoginEmail(trimmedEmail)
+      setLoginPassword(registerPassword)
+
+      // Kayıt formunu sıfırla
+      setRegisterName('')
+      setRegisterEmail('')
+      setRegisterUniversity('')
+      setRegisterDepartment('')
+      setRegisterPassword('')
+      setRegisterConfirmPassword('')
 
       setSuccessNotice(
-        'Kayıt başarılı! Doğrulama e-postası gönderildi. Mailpit arayüzünü (http://localhost:8025) kontrol edebilirsiniz.'
+        'Kayıt başarılı! E-posta adresinize bir doğrulama bağlantısı gönderildi. Lütfen gelen kutunuzu (Mailpit) kontrol edip onayladıktan sonra giriş yapın.'
       )
       setAuthMode('login')
     } catch (err) {
@@ -265,23 +288,23 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
           <form onSubmit={handleLogin} className="auth-form" noValidate>
             <TooltipInput
               label="Üniversite E-Posta Adresi"
-              name="email"
+              name="login_email"
               type="email"
               autoComplete="username"
               placeholder="ornek@ogrenci.edu.tr"
-              value={email}
-              onChange={setEmail}
+              value={loginEmail}
+              onChange={setLoginEmail}
               error={authErrors.email}
               required
             />
             <TooltipInput
               label="Şifre"
-              name="password"
+              name="login_password"
               type="password"
               autoComplete="current-password"
               placeholder="••••••••"
-              value={password}
-              onChange={setPassword}
+              value={loginPassword}
+              onChange={setLoginPassword}
               error={authErrors.password}
               required
             />
@@ -290,65 +313,68 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleRegister} className="auth-form" noValidate>
+          <form onSubmit={handleRegister} className="auth-form" noValidate autoComplete="off">
             <TooltipInput
               label="Ad Soyad"
-              name="name"
+              name="register_name"
               placeholder="Ahmet Yılmaz"
-              value={name}
-              onChange={setName}
+              value={registerName}
+              onChange={setRegisterName}
               error={authErrors.name}
+              autoComplete="off"
               required
             />
             <TooltipInput
               label="Üniversite E-Posta (.edu.tr)"
-              name="email"
+              name="register_email"
               type="email"
-              autoComplete="username"
               placeholder="ornek@ogrenci.edu.tr"
-              value={email}
-              onChange={setEmail}
+              value={registerEmail}
+              onChange={setRegisterEmail}
               error={authErrors.email}
+              autoComplete="off"
               required
             />
             <TooltipInput
               label="Üniversite"
-              name="university"
+              name="register_university"
               placeholder="İstanbul Üniversitesi"
-              value={university}
-              onChange={setUniversity}
+              value={registerUniversity}
+              onChange={setRegisterUniversity}
               error={authErrors.university}
+              autoComplete="off"
               required
             />
             <TooltipInput
               label="Bölüm"
-              name="department"
+              name="register_department"
               placeholder="Bilgisayar Mühendisliği"
-              value={department}
-              onChange={setDepartment}
+              value={registerDepartment}
+              onChange={setRegisterDepartment}
               error={authErrors.department}
+              autoComplete="off"
               required
             />
             <TooltipInput
               label="Şifre (en az 8 karakter)"
-              name="password"
+              name="register_password"
               type="password"
-              autoComplete="new-password"
               placeholder="••••••••"
-              value={password}
-              onChange={setPassword}
+              value={registerPassword}
+              onChange={setRegisterPassword}
               error={authErrors.password}
+              autoComplete="new-password"
               required
             />
             <TooltipInput
               label="Şifre Tekrar"
-              name="confirmPassword"
+              name="register_confirm_password"
               type="password"
-              autoComplete="new-password"
               placeholder="••••••••"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
+              value={registerConfirmPassword}
+              onChange={setRegisterConfirmPassword}
               error={authErrors.confirmPassword}
+              autoComplete="new-password"
               required
             />
             <button type="submit" className="submit-btn" disabled={isLoading}>
