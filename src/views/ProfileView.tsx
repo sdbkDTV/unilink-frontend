@@ -46,6 +46,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         setGithubUrl(p.githubUrl || '')
         setLinkedinUrl(p.linkedinUrl || '')
         setTechList(p.technologies?.map((t) => t.name) || [])
+
+        if (onUserUpdated && p) {
+          onUserUpdated({
+            id: p.userId,
+            name: p.fullName,
+            email: p.email,
+            department: p.department,
+            university: p.university,
+            bio: p.bio,
+            githubUrl: p.githubUrl,
+            linkedinUrl: p.linkedinUrl,
+          })
+        }
       })
       .catch(() => {
         setProfile(null)

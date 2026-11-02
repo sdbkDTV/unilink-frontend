@@ -71,14 +71,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
     const parsed = parseError(err)
 
     if (parsed.status === 0) {
-      // Offline / Demo fallback
-      console.warn('Backend çevrimdışı, demo modunda devam ediliyor.')
-      onSuccess({
-        name: name.trim() || 'Öğrenci',
-        email: email.trim(),
-        department: department.trim() || 'Bilgisayar Mühendisliği',
-        university: university.trim() || 'İstanbul Üniversitesi',
-      })
+      setGeneralError('Sunucuya ulaşılamadı. Backend servisinin (http://localhost:8080) çalıştığından emin olun.')
       return
     }
 
