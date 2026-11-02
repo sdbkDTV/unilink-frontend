@@ -6,6 +6,7 @@ interface TooltipInputProps {
   name?: string
   autoComplete?: string
   type?: 'text' | 'email' | 'password'
+  inputMode?: 'email' | 'text' | 'numeric' | 'search' | 'none'
   placeholder?: string
   value: string
   onChange: (val: string) => void
@@ -21,6 +22,7 @@ export const TooltipInput: React.FC<TooltipInputProps> = ({
   name,
   autoComplete,
   type = 'text',
+  inputMode,
   placeholder,
   value,
   onChange,
@@ -52,6 +54,7 @@ export const TooltipInput: React.FC<TooltipInputProps> = ({
             id={inputId}
             name={name}
             type={type}
+            inputMode={inputMode}
             autoComplete={autoComplete}
             placeholder={placeholder}
             value={value}

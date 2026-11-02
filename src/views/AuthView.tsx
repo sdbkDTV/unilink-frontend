@@ -314,50 +314,55 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
           </form>
         ) : (
           <form onSubmit={handleRegister} className="auth-form" noValidate autoComplete="off">
+            {/* Яндекс/Хром ловушка: перехватывает автоматическое автозаполнение браузера */}
+            <input type="text" name="fake_username_trap" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+            <input type="password" name="fake_password_trap" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
             <TooltipInput
               label="Ad Soyad"
-              name="register_name"
+              name="reg_fullname_unique"
               placeholder="Ahmet Yılmaz"
               value={registerName}
               onChange={setRegisterName}
               error={authErrors.name}
-              autoComplete="off"
+              autoComplete="new-fullname-field"
               required
             />
             <TooltipInput
               label="Üniversite E-Posta (.edu.tr)"
-              name="register_email"
-              type="email"
+              name="reg_email_student_unique"
+              type="text"
+              inputMode="email"
               placeholder="ornek@ogrenci.edu.tr"
               value={registerEmail}
               onChange={setRegisterEmail}
               error={authErrors.email}
-              autoComplete="off"
+              autoComplete="new-student-email-address"
               required
             />
             <TooltipInput
               label="Üniversite"
-              name="register_university"
+              name="reg_university_unique"
               placeholder="İstanbul Üniversitesi"
               value={registerUniversity}
               onChange={setRegisterUniversity}
               error={authErrors.university}
-              autoComplete="off"
+              autoComplete="new-university-field"
               required
             />
             <TooltipInput
               label="Bölüm"
-              name="register_department"
+              name="reg_department_unique"
               placeholder="Bilgisayar Mühendisliği"
               value={registerDepartment}
               onChange={setRegisterDepartment}
               error={authErrors.department}
-              autoComplete="off"
+              autoComplete="new-department-field"
               required
             />
             <TooltipInput
               label="Şifre (en az 8 karakter)"
-              name="register_password"
+              name="reg_password_unique"
               type="password"
               placeholder="••••••••"
               value={registerPassword}
@@ -368,7 +373,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
             />
             <TooltipInput
               label="Şifre Tekrar"
-              name="register_confirm_password"
+              name="reg_confirm_password_unique"
               type="password"
               placeholder="••••••••"
               value={registerConfirmPassword}
