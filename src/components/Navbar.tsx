@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { TabType } from '../types'
 import { useClickOutside } from '../hooks/useClickOutside'
+import { Logo } from './Logo'
 
 interface NavbarProps {
   activeTab: TabType
@@ -27,6 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const getTabLabel = (tab: TabType) => {
     switch (tab) {
       case 'Anasayfa': return '📄 Anasayfa'
+      case 'İlanlarım': return '📋 İlanlarım'
       case 'Mesajlaşma': return '💬 Mesajlaşma'
       case 'Profil': return '👤 Profil'
       case 'Settings': return '⚙️ Settings'
@@ -37,13 +39,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   }
 
   const menuItems: TabType[] = [
-    'Anasayfa', 'Mesajlaşma', 'Profil', 'Settings', 'İlan aç', 'Kaydedilenler', 'Başvurular'
+    'Anasayfa', 'İlanlarım', 'Mesajlaşma', 'Profil', 'Settings', 'İlan aç', 'Kaydedilenler', 'Başvurular'
   ]
 
   return (
     <header className="navbar">
-      <div className="nav-brand" onClick={() => onSelectTab('Anasayfa')}>
-        🔗 UniLink
+      <div className="nav-brand" onClick={() => onSelectTab('Anasayfa')} title="UniLink - Anasayfa">
+        <Logo size={36} />
       </div>
 
       <div className="menu-wrapper" ref={menuRef}>

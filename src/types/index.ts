@@ -43,6 +43,7 @@ export interface Application {
 
 export type TabType = 
   | 'Anasayfa' 
+  | 'İlanlarım'
   | 'Mesajlaşma' 
   | 'Profil' 
   | 'Settings' 

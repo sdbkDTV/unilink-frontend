@@ -1,8 +1,12 @@
 // src/api/postings.ts - İlan, Başvuru ve Kaydedilenler API Fonksiyonları (UniLink Rehberi Bölüm 9.5)
 import { api } from "./client";
+import { tokens } from "./tokens";
 import type {
   Application,
+  ChangePasswordRequest,
   IncomingApplication,
+  LoginResponse,
+  MyPosting,
   Page,
   Posting,
   PostingSummary,
@@ -148,3 +152,19 @@ export const updateMyTechnologies = (technologies: string[]) =>
   api
     .put<Profile>("/api/users/me/technologies", { technologies })
     .then((r) => r.data);
+
+// İLANLARIM (MY POSTINGS)
+export const getMyPostings = (page = 0, size = 12) =>
+  api
+    .get<Page<MyPosting>>("/api/users/me/postings", { params: { page, size } })
+    .then((r) => r.data);
+
+// ŞİFRE DEĞİŞTİRME (SETTINGS / CHANGE PASSWORD)
+export const changePassword = async (body: ChangePasswordRequest) => {
+  const { data } = await api.post<LoginResponse>(
+    "/api/users/me/password",
+    body
+  );
+  tokens.set(data.accessToken, data.refreshToken);
+  return data;
+};

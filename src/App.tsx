@@ -25,11 +25,14 @@ import { IncomingApplicationsModal } from './components/IncomingApplicationsModa
 
 import { AuthView } from './views/AuthView'
 import { VerifyEmailView } from './views/VerifyEmailView'
+import { ResetPasswordView } from './views/ResetPasswordView'
 import { HomeView } from './views/HomeView'
 import { CreateProjectView } from './views/CreateProjectView'
 import { ProfileView } from './views/ProfileView'
 import { SavedProjectsView } from './views/SavedProjectsView'
 import { ApplicationsView } from './views/ApplicationsView'
+import { MyPostingsView } from './views/MyPostingsView'
+import { SettingsView } from './views/SettingsView'
 import { PlaceholderView } from './views/PlaceholderView'
 
 import './styles/global.css'
@@ -180,6 +183,19 @@ export default function App() {
       loadBackendData()
     }
   }, [isAuthenticated, loadBackendData])
+
+  // 3. Bekleyen başvuru rozetini 60 saniyede bir periyodik olarak güncelle (rate limit korumalı)
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const intervalId = setInterval(() => {
+      getPendingCount()
+        .then((count) => setPendingCount(count))
+        .catch(() => {})
+    }, 60000)
+
+    return () => clearInterval(intervalId)
+  }, [isAuthenticated])
 
   // LocalStorage senkronizasyonu
   useEffect(() => {
@@ -339,6 +355,18 @@ export default function App() {
     )
   }
 
+  // --- Şifre sıfırlama sayfası ---
+  if (window.location.pathname === '/reset-password') {
+    return (
+      <ResetPasswordView
+        onGoLogin={() => {
+          window.history.replaceState({}, '', '/')
+          window.location.href = '/'
+        }}
+      />
+    )
+  }
+
   // --- Giriş sayfası ---
   if (!isAuthenticated) {
     return (
@@ -390,17 +418,35 @@ export default function App() {
             onUserUpdated={setCurrentUser}
           />
         )}
+        {activeTab === 'İlanlarım' && (
+          <MyPostingsView
+            currentUserId={currentUser.id}
+            currentUserName={currentUser.name}
+            allProjects={projects}
+            onInspect={setInspectingProject}
+            onOpenIncomingApplications={(proj) => {
+              setInspectingProject(null)
+              setIncomingModalProject(proj)
+            }}
+            onDeleteProject={handleDeleteProject}
+          />
+        )}
         {activeTab === 'Kaydedilenler' && (
           <SavedProjectsView savedProjects={savedProjects} onToggleSave={toggleSaveProject} onInspect={setInspectingProject} />
         )}
         {activeTab === 'Başvurular' && (
           <ApplicationsView applications={applications} onCancelApplication={handleCancelApplication} />
         )}
+        {activeTab === 'Settings' && (
+          <SettingsView user={currentUser} />
+        )}
         {activeTab !== 'Anasayfa' &&
           activeTab !== 'İlan aç' &&
           activeTab !== 'Profil' &&
+          activeTab !== 'İlanlarım' &&
           activeTab !== 'Kaydedilenler' &&
-          activeTab !== 'Başvurular' && <PlaceholderView tab={activeTab} />}
+          activeTab !== 'Başvurular' &&
+          activeTab !== 'Settings' && <PlaceholderView tab={activeTab} />}
       </main>
 
       {inspectingProject && (

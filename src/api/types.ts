@@ -69,6 +69,7 @@ export interface PostingSummary {
   shortDescription: string;
   organizationName: string | null;
   open: boolean;
+  saved?: boolean;
   deadline: string;
   createdAt: string;
   owner: PostingOwner;
@@ -87,6 +88,7 @@ export interface Posting {
   benefitsNote: string | null;
   status: PostingStatus;
   open: boolean;
+  saved?: boolean;
   deadline: string;
   createdAt: string;
   owner: PostingOwner;
@@ -97,6 +99,17 @@ export interface Posting {
 export interface RoleRef {
   id: string;
   role: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface MyPosting {
+  posting: Posting | PostingSummary;
+  status: PostingStatus;
+  applicationCounts: Record<string, number>;
 }
 
 export interface Application {

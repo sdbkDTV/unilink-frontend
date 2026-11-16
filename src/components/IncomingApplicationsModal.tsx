@@ -52,7 +52,7 @@ export const IncomingApplicationsModal: React.FC<IncomingApplicationsModalProps>
     setActionError('')
     let roleIdToUse = selectedRoleId
 
-    // Если у кандидата только одна выбранная роль, используем её автоматически
+    // Aday sadece tek bir role başvurduysa doğrudan onu kullan
     if (!roleIdToUse && app.appliedRoles.length === 1) {
       roleIdToUse = app.appliedRoles[0].id
     }

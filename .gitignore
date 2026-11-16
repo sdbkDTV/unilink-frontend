@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Project artifacts & temp generation scripts
+*.docx
+*.py
+*showcase*
+public/*showcase*
+public/logos*.html

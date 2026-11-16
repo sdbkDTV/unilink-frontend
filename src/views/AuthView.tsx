@@ -1,6 +1,7 @@
 import React, { useState, useEffect, FormEvent } from 'react'
 import { User } from '../types'
 import { TooltipInput } from '../components/TooltipInput'
+import { Logo } from '../components/Logo'
 import { authApi, getMyProfile, parseError } from '../api'
 
 interface AuthViewProps {
@@ -8,11 +9,14 @@ interface AuthViewProps {
 }
 
 export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login')
 
   // --- Giriş Formu Alanları ---
   const [loginEmail, setLoginEmail] = useState(() => localStorage.getItem('unilink_remember_email') || '')
   const [loginPassword, setLoginPassword] = useState(() => localStorage.getItem('unilink_remember_password') || '')
+
+  // --- Şifremi Unuttum Alanı ---
+  const [forgotEmail, setForgotEmail] = useState('')
 
   // --- Kayıt Formu Alanları (Her zaman sıfırdan boş başlar) ---
   const [registerName, setRegisterName] = useState('')
@@ -65,7 +69,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
     setSuccessNotice('')
   }
 
-  const switchMode = (mode: 'login' | 'register') => {
+  const switchMode = (mode: 'login' | 'register' | 'forgot') => {
     setAuthMode(mode)
     resetErrorsAndNotices()
     // Kayıt sekmesine geçildiğinde kayıt formunu tamamen temizle
@@ -76,6 +80,30 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
       setRegisterDepartment('')
       setRegisterPassword('')
       setRegisterConfirmPassword('')
+    }
+    if (mode === 'forgot') {
+      setForgotEmail(loginEmail || '')
+    }
+  }
+
+  const handleForgotPassword = async (e: FormEvent) => {
+    e.preventDefault()
+    resetErrorsAndNotices()
+
+    const trimmed = forgotEmail.trim()
+    if (!trimmed) {
+      setAuthErrors({ forgotEmail: 'Lütfen e-posta adresinizi giriniz.' })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      await authApi.forgotPassword(trimmed)
+      setSuccessNotice('Bu e-posta adresi kayıtlıysa şifre sıfırlama bağlantısı gönderildi. Lütfen gelen kutunuzu (Mailpit) kontrol edin.')
+    } catch (err) {
+      handleApiError(err)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -230,9 +258,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <div className="auth-header">
-          <h1>🔗 UniLink</h1>
-          <p>Proje ve Etkinlik Bulma Platformu</p>
+        <div className="auth-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px' }}>
+          <Logo size={46} subtitle="Üniversite Proje ve Ekip Arkadaşı Platformu" />
         </div>
 
         <div className="auth-toggle">
@@ -308,13 +335,66 @@ export const AuthView: React.FC<AuthViewProps> = ({ onSuccess }) => {
               error={authErrors.password}
               required
             />
+            <div style={{ textAlign: 'right', marginTop: '-6px', marginBottom: '14px' }}>
+              <button
+                type="button"
+                onClick={() => switchMode('forgot')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563eb',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Şifremi unuttum?
+              </button>
+            </div>
             <button type="submit" className="submit-btn" disabled={isLoading}>
               {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap 🚀'}
             </button>
           </form>
+        ) : authMode === 'forgot' ? (
+          <form onSubmit={handleForgotPassword} className="auth-form" noValidate>
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '14px' }}>
+              Kayıtlı .edu.tr e-posta adresinizi giriniz. Şifre sıfırlama bağlantısı gelen kutunuza iletilecektir.
+            </p>
+            <TooltipInput
+              label="Üniversite E-Posta Adresi"
+              name="forgot_email"
+              type="email"
+              placeholder="ornek@ogrenci.edu.tr"
+              value={forgotEmail}
+              onChange={setForgotEmail}
+              error={authErrors.forgotEmail}
+              required
+            />
+            <button type="submit" className="submit-btn" disabled={isLoading}>
+              {isLoading ? 'Gönderiliyor...' : 'Sıfırlama Bağlantısı Gönder ✉️'}
+            </button>
+            <div style={{ textAlign: 'center', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                ← Giriş Ekranına Dön
+              </button>
+            </div>
+          </form>
         ) : (
           <form onSubmit={handleRegister} className="auth-form" noValidate autoComplete="off">
-            {/* Яндекс/Хром ловушка: перехватывает автоматическое автозаполнение браузера */}
+            {/* Tarayıcı otomatik doldurma engelleme kapanı */}
             <input type="text" name="fake_username_trap" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
             <input type="password" name="fake_password_trap" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
 

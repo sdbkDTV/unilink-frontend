@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { api } from '../api/client'
+import { Logo } from '../components/Logo'
 
 type VerifyState = 'loading' | 'ok' | 'invalid'
 
@@ -31,11 +32,11 @@ export const VerifyEmailView: React.FC<{ onGoLogin?: () => void }> = ({ onGoLogi
   }, [])
 
   const handleCloseOrLogin = () => {
-    // Если вкладку можно закрыть скриптом (открыта из ссылки)
+    // Sekmeyi kapatmayı dene (bağlantı ile açıldıysa)
     try {
       window.close()
     } catch {
-      // Игнорируем, если браузер блокирует close
+      // Tarayıcı kapatmayı engellerse yoksay
     }
 
     if (onGoLogin) {
@@ -64,6 +65,9 @@ export const VerifyEmailView: React.FC<{ onGoLogin?: () => void }> = ({ onGoLogi
         width: '100%',
         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
       }}>
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+          <Logo size={38} />
+        </div>
         {state === 'loading' && (
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>

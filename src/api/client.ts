@@ -65,3 +65,11 @@ client.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// 429 (hız sınırı): otomatik tekrar deneme YAPMA, bekleme süresini arayüze ilet.
+export function retryAfterSeconds(error: unknown): number | null {
+  const e = error as AxiosError;
+  if (e?.response?.status !== 429) return null;
+  const v = Number(e.response.headers?.["retry-after"]);
+  return Number.isFinite(v) && v > 0 ? v : 30; // başlık yoksa varsayılan 30 sn
+}
